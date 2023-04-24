@@ -1,0 +1,77 @@
+// This #include statement was automatically added by the Particle IDE.
+#include <New_Ping.h>
+// This #include statement was automatically added by the Particle IDE.
+#include <MQTT.h>
+
+#define TRIGGER_PIN D3
+#define ECHO_PIN D2
+#define MAX_DISTANCE 200
+
+// MQTT Credentials
+const char *mqtt_server = "broker.emqx.io";
+const int mqtt_port = 1883;
+const char *mqtt_topic = "SIT210/wave";
+
+// Ultrasonic sensor object
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
+
+// LED pin
+int ledPin = D7;
+
+// MQTT object
+MQTT client(mqtt_server, mqtt_port);
+
+// MQTT callback function
+void callback(char *topic, byte *payload, unsigned int length)
+{
+  // Print the message to the serial monitor
+  Serial.println("Message received: ");
+  for (int i = 0; i < length; i++)
+  {
+    Serial.print((char)payload[i]);
+  }
+  Serial.println();
+
+  // Flash the LED three times
+  for (int i = 0; i < 3; i++)
+  {
+    digitalWrite(ledPin, HIGH);
+    delay(500);
+    digitalWrite(ledPin, LOW);
+    delay(500);
+  }
+}
+
+void setup()
+{
+  // Set LED pin as output
+  pinMode(ledPin, OUTPUT);
+
+  // Start serial communication
+  Serial.begin(9600);
+
+  // Connect to MQTT broker
+  client.connect("ParticleClient");
+
+  // Subscribe to the MQTT topic
+  client.subscribe(mqtt_topic);
+
+  // Set callback function
+  client.onMessage(callback);
+}
+
+void loop()
+{
+  // Get distance from ultrasonic sensor
+  int distance = sonar.ping_cm();
+
+  // If distance is less than 50 cm, publish a message to the MQTT topic
+  if (distance < 50)
+  {
+    Particle.publish(mqtt_topic, "GuwaniSenadeera");
+    delay(1000); // Wait 1 second to avoid publishing multiple messages
+  }
+
+  // Loop to check for incoming MQTT messages
+  client.loop();
+}
